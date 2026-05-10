@@ -42,12 +42,134 @@
     <div id="verify-loading" style="display: none; text-align: center; padding: 3rem;">
         <div class="spinner" style="margin-bottom: 1.5rem;"></div>
         <h3 style="margin-bottom: 0.5rem;">Querying Network</h3>
-        <p style="color: var(--text-muted);">Checking blockchain registry and IPFS records...</p>
+        <p style="color: var(--text-muted);">Checking blockchain registry and database records...</p>
     </div>
 
     <!-- Result -->
-    <div class="card" id="verify-result" style="display: none; margin-top: 1.5rem;">
-        <!-- Filled by JS -->
-    </div>
+    <div class="card" id="verify-result" style="display: none; margin-top: 1.5rem;"></div>
 </div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+document.addEventListener('DOMContentLoaded', () => {
+    // Tab switching
+    const tabUpload = document.getElementById('tab-upload');
+    const tabHash = document.getElementById('tab-hash');
+    const contentUpload = document.getElementById('content-upload');
+    const contentHash = document.getElementById('content-hash');
+
+    tabUpload.addEventListener('click', () => {
+        tabUpload.className = 'btn active'; tabHash.className = 'btn btn--secondary';
+        contentUpload.style.display = 'block'; contentHash.style.display = 'none';
+    });
+    tabHash.addEventListener('click', () => {
+        tabHash.className = 'btn active'; tabUpload.className = 'btn btn--secondary';
+        contentHash.style.display = 'block'; contentUpload.style.display = 'none';
+    });
+
+    // Verify by hash
+    document.getElementById('verify-hash-form').addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const input = e.target.querySelector('input[name="sha256_hash"]');
+        await doVerify('/verify/hash', { sha256_hash: input.value.trim().toLowerCase() });
+    });
+
+    // Verify by upload
+    document.getElementById('verify-upload-form').addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const fileInput = e.target.querySelector('input[type="file"]');
+        if (!fileInput.files.length) return alert('Select a file.');
+        const fd = new FormData(); fd.append('file', fileInput.files[0]);
+        await doVerify('/verify/upload', fd, true);
+    });
+
+    async function doVerify(url, body, isFormData = false) {
+        const loading = document.getElementById('verify-loading');
+        const result = document.getElementById('verify-result');
+        document.getElementById('content-upload').style.display = 'none';
+        document.getElementById('content-hash').style.display = 'none';
+        loading.style.display = 'block'; result.style.display = 'none';
+
+        try {
+            const opts = isFormData
+                ? { method: 'POST', body }
+                : { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) };
+            const resp = await fetch(url, opts);
+            const data = await resp.json();
+            loading.style.display = 'none';
+            renderResult(data, result);
+        } catch (err) {
+            loading.style.display = 'none';
+            result.style.display = 'block';
+            result.innerHTML = `<div class="text-center"><div class="verify-result-icon">⚠️</div><div class="verify-result-title" style="color:var(--warning);">Error</div><p style="color:var(--text-muted);">${err.message}</p><button class="btn btn--primary mt-4" onclick="location.reload()">Try Again</button></div>`;
+        }
+    }
+
+    function renderResult(data, container) {
+        container.style.display = 'block';
+        if (data.success && data.data) {
+            const d = data.data;
+            const doc = d.document || {};
+            const status = d.status || 'unknown';
+            const source = d.source || 'unknown';
+
+            // Status-based rendering
+            let icon, color, label, explanation;
+            if (status === 'verified') {
+                icon = '✅'; color = 'var(--success)'; label = 'Document Authenticated';
+                explanation = source === 'blockchain'
+                    ? '⛓️ Verified via blockchain only. Local database record was deleted but the immutable blockchain proof remains intact.'
+                    : 'Document exists in both the database and blockchain.';
+            } else if (status === 'revoked') {
+                icon = '⚠️'; color = 'var(--warning)'; label = 'Document Revoked';
+                explanation = 'This document was previously valid but has been officially revoked.';
+            } else if (status === 'rejected') {
+                icon = '❌'; color = 'var(--danger)'; label = 'Document REJECTED';
+                explanation = d.rejection_reason || 'AI analysis flagged this document as non-professional or tampered.';
+            } else if (status === 'flagged') {
+                icon = '🚩'; color = 'var(--danger)'; label = 'Document Flagged';
+                explanation = 'This document has been flagged for suspicious content.';
+            } else if (status === 'pending') {
+                icon = '⏳'; color = 'var(--warning)'; label = 'Pending Review';
+                explanation = 'This document is awaiting verification.';
+            } else {
+                icon = '❓'; color = 'var(--text-muted)'; label = 'Unknown Status';
+                explanation = '';
+            }
+
+            container.innerHTML = `
+                <div class="text-center mb-4">
+                    <div class="verify-result-icon">${icon}</div>
+                    <div class="verify-result-title" style="color: ${color};">${label}</div>
+                    <p style="color: var(--text-muted); margin-top: 0.5rem; font-size: 0.9rem;">${explanation}</p>
+                </div>
+                <table class="table" style="font-size: 0.85rem;">
+                    <tbody>
+                        <tr><th>Status</th><td><span class="badge badge--${status}">${status.toUpperCase()}</span></td></tr>
+                        <tr><th>Source</th><td>${source === 'blockchain' ? '⛓️ Blockchain Only' : source === 'database' ? '🗃️ Database + Blockchain' : '—'}</td></tr>
+                        ${d.owner_email ? `<tr><th>Uploaded By</th><td>${d.owner_email}</td></tr>` : ''}
+                        ${doc.original_name ? `<tr><th>Document</th><td>${doc.original_name}</td></tr>` : ''}
+                        ${doc.doc_type ? `<tr><th>Type</th><td>${doc.doc_type}</td></tr>` : ''}
+                        ${doc.issuer_name ? `<tr><th>Issuer</th><td>${doc.issuer_name}</td></tr>` : ''}
+                        ${doc.sha256_hash ? `<tr><th>SHA-256</th><td class="text-mono" style="word-break:break-all;font-size:0.8rem;">${doc.sha256_hash}</td></tr>` : ''}
+                        ${d.blockchain_timestamp ? `<tr><th>Blockchain Timestamp</th><td>${new Date(d.blockchain_timestamp * 1000).toLocaleString()}</td></tr>` : ''}
+                        ${d.rejection_reason ? `<tr><th>Rejection Reason</th><td style="color:var(--danger);">${d.rejection_reason}</td></tr>` : ''}
+                    </tbody>
+                </table>
+                <div class="text-center mt-4">
+                    <button class="btn btn--secondary" onclick="location.reload()">Verify Another</button>
+                </div>`;
+        } else {
+            container.innerHTML = `
+                <div class="text-center">
+                    <div class="verify-result-icon">❌</div>
+                    <div class="verify-result-title" style="color: var(--danger);">Not Found</div>
+                    <p style="color: var(--text-muted); margin-top: 0.5rem;">${data.message || 'Document not found in the registry.'}</p>
+                    <button class="btn btn--secondary mt-4" onclick="location.reload()">Verify Another</button>
+                </div>`;
+        }
+    }
+});
+</script>
 {% endblock %}

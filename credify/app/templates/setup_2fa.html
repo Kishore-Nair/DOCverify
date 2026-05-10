@@ -1,0 +1,24 @@
+{% extends "base.html" %}
+{% block title %}Setup 2FA | Credify{% endblock %}
+{% block content %}
+<div style="max-width: 500px; margin: 0 auto;">
+    <div class="page-header"><h2>🔐 Enable Two-Factor Authentication</h2></div>
+    <div class="card">
+        <div class="text-center mb-3">
+            <p style="color: var(--text-secondary); margin-bottom: 1rem;">Scan this QR code with your authenticator app (Google Authenticator, Authy, etc.):</p>
+            <img src="data:image/png;base64,{{ qr_base64 }}" alt="2FA QR Code" style="max-width: 220px; border-radius: var(--radius-sm); border: 1px solid var(--border); padding: 0.5rem; background: #fff;">
+        </div>
+        <div class="card" style="background: var(--bg-input); text-align: center; margin-bottom: 1.5rem;">
+            <p style="font-size: 0.8rem; color: var(--text-muted); margin-bottom: 0.25rem;">Manual entry key:</p>
+            <code style="font-size: 0.9rem; color: var(--primary-light); letter-spacing: 2px;">{{ secret }}</code>
+        </div>
+        <form method="POST">
+            <div class="form-group">
+                <label for="totp_code">Enter the 6-digit code from your app to confirm:</label>
+                <input type="text" id="totp_code" name="totp_code" placeholder="000000" required maxlength="6" pattern="\d{6}" style="text-align: center; font-size: 1.3rem; letter-spacing: 0.4rem;">
+            </div>
+            <button type="submit" class="btn btn--primary btn--full">Enable 2FA</button>
+        </form>
+    </div>
+</div>
+{% endblock %}

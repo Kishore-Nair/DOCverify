@@ -102,6 +102,9 @@ documents_bp = Blueprint("documents", __name__)
 @login_required
 def dashboard():
     """Show the user dashboard with document stats."""
+    if current_user.role == "admin":
+        return redirect(url_for("admin.dashboard"))
+
     docs = Document.query.filter_by(owner_id=current_user.id).order_by(
         Document.upload_date.desc()
     ).all()
@@ -118,6 +121,10 @@ def dashboard():
 @login_required
 def upload():
     """Upload a document through the verification pipeline (web form)."""
+    if current_user.role in ("verifier", "admin"):
+        flash("Admins and Verifiers are not permitted to upload documents.", "error")
+        return redirect(url_for("documents.dashboard"))
+
     if request.method == "POST":
         file = request.files.get("document")
         if not file or file.filename == "":
@@ -136,11 +143,21 @@ def upload():
         # Pipeline
         sha256 = hash_file(filepath)
         ai_result = check_document(filepath)
-        ipfs_result = ipfs_upload(filepath)
-        ipfs_cid = ipfs_result["cid"]
-        tx_hash = blockchain_store(sha256, ipfs_cid)
-
-        status = "verified" if ai_result["verdict"] == "LEGIT" else "rejected"
+        
+        verdict = ai_result.get("verdict", "LEGIT")
+        details = ai_result.get("details", [])
+        rejection_reason = None
+        
+        if verdict == "LEGIT":
+            status = "verified"
+            ipfs_result = ipfs_upload(filepath)
+            ipfs_cid = ipfs_result["cid"]
+            tx_hash = blockchain_store(sha256, ipfs_cid)
+        else:
+            status = "rejected"
+            rejection_reason = "; ".join(details) if details else "AI flagged document as suspicious."
+            ipfs_cid = None
+            tx_hash = None
 
         doc = Document(
             filename=filename,
@@ -150,11 +167,17 @@ def upload():
             blockchain_tx_id=tx_hash,
             status=status,
             owner_id=current_user.id,
+            doc_type=request.form.get("doc_type", "").strip() or None,
+            issuer_name=request.form.get("issuer_name", "").strip() or None,
+            rejection_reason=rejection_reason,
         )
         db.session.add(doc)
         db.session.commit()
 
-        flash(f"Document processed — status: {status.upper()}", "success")
+        if status == "rejected":
+            flash(f"Document REJECTED by AI analysis: {rejection_reason}", "error")
+        else:
+            flash(f"Document processed — status: {status.upper()}", "success")
         return redirect(url_for("documents.report", doc_id=doc.id))
 
     return render_template("upload.html")
@@ -165,10 +188,31 @@ def upload():
 def report(doc_id: int):
     """Show detailed report for a single document."""
     doc = Document.query.get_or_404(doc_id)
-    if doc.owner_id != current_user.id:
+    # Owner, verifier, or admin can view
+    if doc.owner_id != current_user.id and current_user.role not in ("verifier", "admin"):
         flash("Access denied.", "error")
         return redirect(url_for("documents.dashboard"))
     return render_template("report.html", doc=doc)
+
+
+@documents_bp.route("/files")
+@login_required
+def file_browser():
+    """View all uploaded files. Only accessible by verifiers and admins."""
+    if current_user.role not in ("verifier", "admin"):
+        flash("Access denied. Only verifiers and admins can view all files.", "error")
+        return redirect(url_for("documents.dashboard"))
+
+    if current_user.role == "verifier" and current_user.kyc_status != "verified":
+        flash("KYC Verification Required: You must complete identity verification before accessing the file browser.", "warning")
+        return redirect(url_for("auth.kyc_submit"))
+
+    status_filter = request.args.get("status", "").strip().lower()
+    query = Document.query
+    if status_filter:
+        query = query.filter_by(status=status_filter)
+    all_docs = query.order_by(Document.upload_date.desc()).all()
+    return render_template("file_browser.html", documents=all_docs, current_filter=status_filter)
 
 
 # ===================================================================== #
@@ -231,10 +275,26 @@ def api_upload():
         ai_result = analyze_document(tmp_path)
 
         if ai_result["is_suspicious"]:
+            # Save rejected doc with rejection reason instead of just returning error
+            sha256_rej = hash_file(tmp_path)
+            rejection_reason = "; ".join(ai_result["flags"]) if ai_result["flags"] else "AI flagged document as suspicious."
+            filename_rej = secure_filename(file.filename)
+            doc_rej = Document(
+                filename=filename_rej,
+                original_name=file.filename,
+                sha256_hash=sha256_rej,
+                status="rejected",
+                owner_id=user_id,
+                doc_type=request.form.get("doc_type", "").strip() or None,
+                issuer_name=request.form.get("issuer_name", "").strip() or None,
+                rejection_reason=rejection_reason,
+            )
+            db.session.add(doc_rej)
+            db.session.commit()
             return _api_err(
-                f"Document flagged as suspicious (confidence: "
+                f"Document REJECTED (confidence: "
                 f"{ai_result['confidence_score']:.1%}). "
-                f"Flags: {'; '.join(ai_result['flags'])}",
+                f"Reason: {rejection_reason}",
                 400,
             )
 

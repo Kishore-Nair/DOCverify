@@ -1,0 +1,51 @@
+{% extends "base.html" %}
+{% block title %}KYC Verification | Credify{% endblock %}
+{% block content %}
+<div style="max-width: 600px; margin: 0 auto;">
+    <div class="page-header"><h2>🪪 Identity Verification (KYC)</h2></div>
+    {% if current_user.kyc_status == 'verified' %}
+    <div class="card text-center">
+        <div style="font-size: 4rem;">✅</div>
+        <h3 style="color: var(--success); margin-top: 0.5rem;">KYC Verified</h3>
+        <p style="color: var(--text-muted);">Your identity has been verified on {{ current_user.kyc_verified_at.strftime('%Y-%m-%d') if current_user.kyc_verified_at else 'N/A' }}.</p>
+    </div>
+    {% elif current_user.kyc_full_name and current_user.kyc_status == 'pending' %}
+    <div class="card text-center">
+        <div style="font-size: 4rem;">⏳</div>
+        <h3 style="color: var(--warning); margin-top: 0.5rem;">KYC Pending Review</h3>
+        <p style="color: var(--text-muted);">Your submission is under review by an admin.</p>
+    </div>
+    {% elif current_user.kyc_status == 'rejected' %}
+    <div class="card text-center mb-3">
+        <div style="font-size: 4rem;">❌</div>
+        <h3 style="color: var(--danger); margin-top: 0.5rem;">KYC Rejected</h3>
+        <p style="color: var(--text-muted);">Please resubmit with correct information.</p>
+    </div>
+    {% endif %}
+    {% if current_user.kyc_status != 'verified' %}
+    <div class="card">
+        <h3 style="font-size: 1rem; font-weight: 600; color: var(--text-secondary); margin-bottom: 1rem;">Submit Your Identity Documents</h3>
+        <form method="POST">
+            <div class="form-group">
+                <label for="full_name">Full Legal Name</label>
+                <input type="text" id="full_name" name="full_name" placeholder="John Doe" required value="{{ current_user.kyc_full_name or '' }}">
+            </div>
+            <div class="form-group">
+                <label for="id_type">ID Type</label>
+                <select id="id_type" name="id_type" required>
+                    <option value="">Select...</option>
+                    <option value="passport" {% if current_user.kyc_id_type == 'passport' %}selected{% endif %}>Passport</option>
+                    <option value="national_id" {% if current_user.kyc_id_type == 'national_id' %}selected{% endif %}>National ID</option>
+                    <option value="drivers_license" {% if current_user.kyc_id_type == 'drivers_license' %}selected{% endif %}>Driver's License</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label for="id_number">ID Number</label>
+                <input type="text" id="id_number" name="id_number" placeholder="ID number" required value="{{ current_user.kyc_id_number or '' }}">
+            </div>
+            <button type="submit" class="btn btn--primary btn--full">Submit for Verification</button>
+        </form>
+    </div>
+    {% endif %}
+</div>
+{% endblock %}

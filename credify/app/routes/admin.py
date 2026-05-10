@@ -1,9 +1,11 @@
 """Admin routes — session-based, role-restricted to admin users.
 
 Blueprint ``admin_bp``  /admin, /admin/users, /admin/documents, etc.
+Includes KYC approval, security monitoring, and threat alerts.
 """
 
 import logging
+from datetime import datetime, timezone, timedelta
 from functools import wraps
 
 from flask import (
@@ -18,7 +20,7 @@ from flask import (
 from flask_login import login_required, current_user
 
 from app import db
-from app.models import User, Document, AuditLog
+from app.models import User, Document, AuditLog, LoginAttempt
 
 logger = logging.getLogger(__name__)
 
@@ -249,4 +251,120 @@ def audit_log():
         "admin_audit.html",
         audits=pagination.items,
         pagination=pagination,
+    )
+
+
+# ---------------------------------------------------------------------------
+# KYC Management
+# ---------------------------------------------------------------------------
+
+@admin_bp.route("/kyc")
+@admin_required
+def kyc_list():
+    """List all users with pending KYC submissions."""
+    pending = User.query.filter_by(kyc_status="pending").filter(
+        User.kyc_full_name.isnot(None)
+    ).all()
+    verified = User.query.filter_by(kyc_status="verified").all()
+    rejected = User.query.filter_by(kyc_status="rejected").all()
+
+    return render_template(
+        "admin_kyc.html",
+        pending=pending,
+        verified=verified,
+        rejected=rejected,
+    )
+
+
+@admin_bp.route("/kyc/<int:user_id>/approve", methods=["POST"])
+@admin_required
+def kyc_approve(user_id):
+    """Approve a user's KYC submission."""
+    user = User.query.get_or_404(user_id)
+    user.kyc_status = "verified"
+    user.kyc_verified_at = datetime.now(timezone.utc)
+    db.session.commit()
+    logger.info("Admin %s approved KYC for user %s", current_user.email, user.email)
+    flash(f"KYC approved for {user.email}.", "success")
+    return redirect(url_for("admin.kyc_list"))
+
+
+@admin_bp.route("/kyc/<int:user_id>/reject", methods=["POST"])
+@admin_required
+def kyc_reject(user_id):
+    """Reject a user's KYC submission."""
+    user = User.query.get_or_404(user_id)
+    user.kyc_status = "rejected"
+    db.session.commit()
+    logger.info("Admin %s rejected KYC for user %s", current_user.email, user.email)
+    flash(f"KYC rejected for {user.email}.", "error")
+    return redirect(url_for("admin.kyc_list"))
+
+
+# ---------------------------------------------------------------------------
+# Security Monitoring
+# ---------------------------------------------------------------------------
+
+@admin_bp.route("/security")
+@admin_required
+def security():
+    """Security monitoring dashboard — failed logins, suspicious activity."""
+    cutoff_15m = datetime.now(timezone.utc) - timedelta(minutes=15)
+    cutoff_1h = datetime.now(timezone.utc) - timedelta(hours=1)
+    cutoff_24h = datetime.now(timezone.utc) - timedelta(hours=24)
+
+    # Failed logins in last 15 minutes grouped by IP
+    from sqlalchemy import func
+    locked_ips = db.session.query(
+        LoginAttempt.ip_address,
+        func.count(LoginAttempt.id).label("count")
+    ).filter(
+        LoginAttempt.success == False,
+        LoginAttempt.timestamp >= cutoff_15m,
+    ).group_by(LoginAttempt.ip_address).having(
+        func.count(LoginAttempt.id) >= 5
+    ).all()
+
+    # Recent failed login attempts
+    recent_failures = LoginAttempt.query.filter(
+        LoginAttempt.success == False,
+        LoginAttempt.timestamp >= cutoff_1h,
+    ).order_by(LoginAttempt.timestamp.desc()).limit(50).all()
+
+    # Admin revocation velocity — flag if >50 revokes in 5 min
+    cutoff_5m = datetime.now(timezone.utc) - timedelta(minutes=5)
+    recent_revokes = AuditLog.query.filter(
+        AuditLog.action.in_(["revoke", "admin_revoke"]),
+        AuditLog.timestamp >= cutoff_5m,
+    ).count()
+
+    # Total stats
+    total_failures_24h = LoginAttempt.query.filter(
+        LoginAttempt.success == False,
+        LoginAttempt.timestamp >= cutoff_24h,
+    ).count()
+    total_logins_24h = LoginAttempt.query.filter(
+        LoginAttempt.timestamp >= cutoff_24h,
+    ).count()
+
+    alerts = []
+    if recent_revokes >= 50:
+        alerts.append({
+            "level": "critical",
+            "message": f"ALERT: {recent_revokes} documents revoked in the last 5 minutes! Possible compromise.",
+        })
+    for ip, count in locked_ips:
+        alerts.append({
+            "level": "warning",
+            "message": f"IP {ip} has {count} failed login attempts in 15 minutes (locked out).",
+        })
+
+    return render_template(
+        "admin_security.html",
+        locked_ips=locked_ips,
+        recent_failures=recent_failures,
+        recent_revokes=recent_revokes,
+        total_failures_24h=total_failures_24h,
+        total_logins_24h=total_logins_24h,
+        alerts=alerts,
     )

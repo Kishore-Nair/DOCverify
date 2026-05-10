@@ -1,0 +1,38 @@
+{% extends "base.html" %}
+{% block title %}File Browser | Credify{% endblock %}
+{% block content %}
+<div class="page-header">
+    <h2>📁 File Browser</h2>
+</div>
+<div class="card" style="padding: 1rem 1.5rem;">
+    <div style="display: flex; gap: 0.5rem; flex-wrap: wrap; align-items: center;">
+        <span style="font-size: 0.85rem; color: var(--text-muted); margin-right: 0.5rem;">Filter:</span>
+        <a href="{{ url_for('documents.file_browser') }}" class="btn {{ 'btn--primary' if not current_filter else 'btn--secondary' }}" style="padding: 0.3rem 0.8rem; font-size: 0.8rem;">All</a>
+        {% for s in ['verified', 'pending', 'flagged', 'rejected', 'revoked'] %}
+        <a href="{{ url_for('documents.file_browser', status=s) }}" class="btn {{ 'btn--primary' if current_filter == s else 'btn--secondary' }}" style="padding: 0.3rem 0.8rem; font-size: 0.8rem;">{{ s|capitalize }}</a>
+        {% endfor %}
+    </div>
+</div>
+<div class="card">
+    <div style="overflow-x: auto;">
+        <table class="table">
+            <thead><tr><th>ID</th><th>Name</th><th>Owner</th><th>Type</th><th>Status</th><th>Uploaded</th><th></th></tr></thead>
+            <tbody>
+                {% for doc in documents %}
+                <tr>
+                    <td style="color: var(--text-muted);">#{{ doc.id }}</td>
+                    <td style="font-weight: 500;">{{ doc.original_name }}</td>
+                    <td style="font-size: 0.85rem;">{{ doc.owner.email if doc.owner else 'Unknown' }}</td>
+                    <td>{{ doc.doc_type or '—' }}</td>
+                    <td><span class="badge badge--{{ doc.status }}">{{ doc.status }}</span></td>
+                    <td style="color: var(--text-muted); font-size: 0.85rem;">{{ doc.upload_date.strftime('%Y-%m-%d %H:%M') if doc.upload_date else '—' }}</td>
+                    <td><a href="{{ url_for('documents.report', doc_id=doc.id) }}" class="btn btn--secondary" style="padding: 0.25rem 0.6rem; font-size: 0.75rem;">View</a></td>
+                </tr>
+                {% else %}
+                <tr><td colspan="7" class="text-center" style="padding: 3rem; color: var(--text-muted);">No documents found.</td></tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}

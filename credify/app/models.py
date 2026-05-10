@@ -29,12 +29,29 @@ class User(UserMixin, db.Model):
         db.DateTime, default=lambda: datetime.now(timezone.utc)
     )
 
+    # -- 2FA fields ----------------------------------------------------------
+    totp_secret = db.Column(db.String(32), nullable=True)  # base32-encoded TOTP secret
+    two_fa_enabled = db.Column(db.Boolean, default=False, nullable=False)
+
+    # -- KYC fields ----------------------------------------------------------
+    kyc_status = db.Column(
+        db.String(20), nullable=False, default="pending"
+    )  # pending | verified | rejected
+    kyc_full_name = db.Column(db.String(255), nullable=True)
+    kyc_id_number = db.Column(db.String(100), nullable=True)
+    kyc_id_type = db.Column(db.String(50), nullable=True)  # passport | national_id | drivers_license
+    kyc_submitted_at = db.Column(db.DateTime, nullable=True)
+    kyc_verified_at = db.Column(db.DateTime, nullable=True)
+
+    # -- Email verification --------------------------------------------------
+    email_verified = db.Column(db.Boolean, default=False, nullable=False)
+
     # Relationships
     documents = db.relationship(
-        "Document", backref="owner", lazy=True, foreign_keys="Document.owner_id"
+        "Document", backref="owner", lazy=True, foreign_keys="Document.owner_id", cascade="all, delete-orphan"
     )
     verification_records = db.relationship(
-        "VerificationRecord", backref="verifier", lazy=True
+        "VerificationRecord", backref="verifier", lazy=True, cascade="all, delete-orphan"
     )
 
     # -- password helpers ----------------------------------------------------
@@ -55,6 +72,9 @@ class User(UserMixin, db.Model):
             "created_at": (
                 self.created_at.isoformat() if self.created_at else None
             ),
+            "two_fa_enabled": self.two_fa_enabled,
+            "kyc_status": self.kyc_status,
+            "email_verified": self.email_verified,
         }
 
     def __repr__(self) -> str:
@@ -92,12 +112,13 @@ class Document(db.Model):
     issue_date = db.Column(db.Date, nullable=True)
     status = db.Column(
         db.String(20), nullable=False, default="pending"
-    )  # pending | verified | flagged | revoked
+    )  # pending | verified | flagged | rejected | revoked
+    rejection_reason = db.Column(db.Text, nullable=True)  # AI rejection details
 
     # Relationships
-    audit_logs = db.relationship("AuditLog", backref="document", lazy=True)
+    audit_logs = db.relationship("AuditLog", backref="document", lazy=True, cascade="all, delete-orphan")
     verification_records = db.relationship(
-        "VerificationRecord", backref="document", lazy=True
+        "VerificationRecord", backref="document", lazy=True, cascade="all, delete-orphan"
     )
 
     # -- serialisation -------------------------------------------------------
@@ -120,6 +141,7 @@ class Document(db.Model):
                 self.issue_date.isoformat() if self.issue_date else None
             ),
             "status": self.status,
+            "rejection_reason": self.rejection_reason,
         }
 
     def __repr__(self) -> str:
@@ -217,3 +239,24 @@ class VerificationRecord(db.Model):
             f"<VerificationRecord id={self.id} document_id={self.document_id} "
             f"result={self.result!r} method={self.method!r}>"
         )
+
+
+# ---------------------------------------------------------------------------
+# LoginAttempt — tracks failed logins for rate limiting / threat detection
+# ---------------------------------------------------------------------------
+
+class LoginAttempt(db.Model):
+    """Tracks login attempts per IP for security monitoring."""
+
+    __tablename__ = "login_attempts"
+
+    id = db.Column(db.Integer, primary_key=True)
+    ip_address = db.Column(db.String(45), nullable=False, index=True)
+    email = db.Column(db.String(120), nullable=True)
+    success = db.Column(db.Boolean, nullable=False)
+    timestamp = db.Column(
+        db.DateTime, default=lambda: datetime.now(timezone.utc)
+    )
+
+    def __repr__(self) -> str:
+        return f"<LoginAttempt ip={self.ip_address} success={self.success}>"

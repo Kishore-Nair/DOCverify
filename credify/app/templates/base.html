@@ -15,31 +15,45 @@
         <!-- Sidebar -->
         <aside class="sidebar" id="sidebar">
             <div class="sidebar-header">
-                <a href="{{ url_for('auth.index') }}" class="logo">CREDIFY</a>
+                <a href="{{ url_for('auth.index') }}" class="logo" style="display: flex; align-items: center;">
+                    <img src="{{ url_for('static', filename='images/logo.png') }}" alt="CREDIFY" style="height: 40px;">
+                </a>
                 <button class="menu-close" id="menu-close">✕</button>
             </div>
             <nav class="sidebar-nav">
                 {% if current_user.is_authenticated %}
+                    {% if current_user.role != 'admin' %}
                     <a href="{{ url_for('documents.dashboard') }}" class="nav-link {% if request.endpoint == 'documents.dashboard' %}active{% endif %}">
                         <span class="icon">📊</span> Dashboard
                     </a>
+                    {% endif %}
+                    {% if current_user.role not in ('verifier', 'admin') %}
                     <a href="{{ url_for('documents.upload') }}" class="nav-link {% if request.endpoint == 'documents.upload' %}active{% endif %}">
-                        <span class="icon">📤</span> Upload
+                        <img src="{{ url_for('static', filename='images/upload.png') }}" alt="" class="icon" style="width: 1.75rem; height: 1.75rem; filter: brightness(0.8) grayscale(100%);"> Upload
                     </a>
+                    {% endif %}
+                    {% if current_user.role in ('verifier', 'admin') %}
                     <a href="{{ url_for('verify.verify') }}" class="nav-link {% if request.endpoint == 'verify.verify' %}active{% endif %}">
-                        <span class="icon">🔍</span> Verify
+                        <img src="{{ url_for('static', filename='images/verify.png') }}" alt="" class="icon" style="width: 1.75rem; height: 1.75rem; filter: brightness(0.8) grayscale(100%);"> Verify
                     </a>
+                    <a href="{{ url_for('documents.file_browser') }}" class="nav-link {% if request.endpoint == 'documents.file_browser' %}active{% endif %}">
+                        <img src="{{ url_for('static', filename='images/file_browser.png') }}" alt="" class="icon" style="width: 1.75rem; height: 1.75rem; filter: brightness(0.8) grayscale(100%);"> File Browser
+                    </a>
+                    {% endif %}
                     {% if current_user.role == 'admin' %}
                     <div style="margin-top: 0.5rem; padding-top: 0.5rem; border-top: 1px solid var(--border);">
-                        <a href="{{ url_for('admin.dashboard') }}" class="nav-link {% if request.endpoint and request.endpoint.startswith('admin.') %}active{% endif %}">
-                            <span class="icon">⚙️</span> Admin Portal
+                        <a href="{{ url_for('admin.dashboard') }}" class="nav-link {% if request.endpoint == 'admin.dashboard' %}active{% endif %}">
+                            <img src="{{ url_for('static', filename='images/admin.png') }}" alt="" class="icon" style="width: 1.75rem; height: 1.75rem; filter: brightness(0.8) grayscale(100%);"> Admin Portal
+                        </a>
+                        <a href="{{ url_for('admin.kyc_list') }}" class="nav-link {% if request.endpoint == 'admin.kyc_list' %}active{% endif %}">
+                            <img src="{{ url_for('static', filename='images/kyc.png') }}" alt="" class="icon" style="width: 1.75rem; height: 1.75rem; filter: brightness(0.8) grayscale(100%);"> KYC Review
+                        </a>
+                        <a href="{{ url_for('admin.security') }}" class="nav-link {% if request.endpoint == 'admin.security' %}active{% endif %}">
+                            <img src="{{ url_for('static', filename='images/security.png') }}" alt="" class="icon" style="width: 1.75rem; height: 1.75rem; filter: brightness(0.8) grayscale(100%);"> Security
                         </a>
                     </div>
                     {% endif %}
                 {% else %}
-                    <a href="{{ url_for('verify.verify') }}" class="nav-link {% if request.endpoint == 'verify.verify' %}active{% endif %}">
-                        <span class="icon">🔍</span> Public Verify
-                    </a>
                     <a href="{{ url_for('auth.login') }}" class="nav-link {% if request.endpoint == 'auth.login' %}active{% endif %}">
                         <span class="icon">🔑</span> Login
                     </a>

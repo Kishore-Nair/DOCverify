@@ -1,0 +1,23 @@
+{% extends "base.html" %}
+{% block title %}Two-Factor Authentication | Credify{% endblock %}
+{% block content %}
+<div class="auth-container">
+    <div class="auth-card glass-card">
+        <div class="auth-header">
+            <div class="auth-icon">🔐</div>
+            <h1>Enter 2FA Code</h1>
+            <p class="auth-subtitle">Open your authenticator app and enter the 6-digit code.</p>
+        </div>
+        <form method="POST">
+            <div class="form-group">
+                <label for="totp_code">Verification Code</label>
+                <input type="text" id="totp_code" name="totp_code" placeholder="000000" required autofocus maxlength="6" pattern="\d{6}" style="text-align: center; font-size: 1.5rem; letter-spacing: 0.5rem;">
+            </div>
+            <button type="submit" class="btn btn--primary btn--full">Verify</button>
+        </form>
+        <div class="auth-footer">
+            <a href="{{ url_for('auth.login') }}">← Back to Login</a>
+        </div>
+    </div>
+</div>
+{% endblock %}

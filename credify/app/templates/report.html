@@ -12,6 +12,13 @@
         <span class="badge badge--{{ doc.status }}" style="font-size: 0.85rem; padding: 0.4rem 1rem;">{{ doc.status | upper }}</span>
     </div>
 
+    {% if doc.status == 'rejected' and doc.rejection_reason %}
+    <div class="card" style="border-left: 4px solid var(--danger); margin-bottom: 1.5rem;">
+        <h3 style="font-size: 1rem; font-weight: 600; color: var(--danger); margin-bottom: 0.75rem;">❌ Rejection Reason (AI Analysis)</h3>
+        <p style="color: var(--text-secondary); font-size: 0.9rem; line-height: 1.6;">{{ doc.rejection_reason }}</p>
+    </div>
+    {% endif %}
+
     <div class="report-grid">
         <!-- File Info -->
         <div class="card">

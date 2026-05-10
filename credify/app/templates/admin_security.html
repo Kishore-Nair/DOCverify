@@ -1,0 +1,71 @@
+{% extends "base.html" %}
+{% block title %}Security Monitoring — Admin | Credify{% endblock %}
+{% block content %}
+<div class="page-header">
+    <h2>🛡️ Security Monitoring</h2>
+    <a href="{{ url_for('admin.dashboard') }}" class="btn btn--ghost">← Admin Portal</a>
+</div>
+
+{% for alert in alerts %}
+<div class="flash flash--error" style="margin-bottom: 1rem;">
+    <span>🚨 {{ alert.message }}</span>
+</div>
+{% endfor %}
+
+<div class="stats-grid" style="grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));">
+    <div class="card stat-card">
+        <div class="stat-label">Login Attempts (24h)</div>
+        <div class="stat-value">{{ total_logins_24h }}</div>
+    </div>
+    <div class="card stat-card">
+        <div class="stat-label">Failed Logins (24h)</div>
+        <div class="stat-value danger">{{ total_failures_24h }}</div>
+    </div>
+    <div class="card stat-card">
+        <div class="stat-label">Locked IPs (15m)</div>
+        <div class="stat-value warning">{{ locked_ips|length }}</div>
+    </div>
+    <div class="card stat-card">
+        <div class="stat-label">Revocations (5m)</div>
+        <div class="stat-value {{ 'danger' if recent_revokes >= 50 else 'success' }}">{{ recent_revokes }}</div>
+    </div>
+</div>
+
+{% if locked_ips %}
+<div class="card">
+    <h3 style="font-size: 1rem; font-weight: 600; color: var(--danger); margin-bottom: 1rem;">⚠️ Rate-Limited IPs</h3>
+    <table class="table">
+        <thead><tr><th>IP Address</th><th>Failed Attempts (15m)</th><th>Status</th></tr></thead>
+        <tbody>
+            {% for ip, count in locked_ips %}
+            <tr>
+                <td class="text-mono">{{ ip }}</td>
+                <td style="color: var(--danger); font-weight: 600;">{{ count }}</td>
+                <td><span class="badge badge--flagged">LOCKED</span></td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% endif %}
+
+<div class="card mt-4">
+    <h3 style="font-size: 1rem; font-weight: 600; color: var(--text-secondary); margin-bottom: 1rem;">Recent Failed Logins (1h)</h3>
+    <div style="overflow-x: auto;">
+        <table class="table">
+            <thead><tr><th>Time</th><th>IP Address</th><th>Email Attempted</th></tr></thead>
+            <tbody>
+                {% for attempt in recent_failures %}
+                <tr>
+                    <td style="color: var(--text-muted); font-size: 0.85rem;">{{ attempt.timestamp.strftime('%H:%M:%S') if attempt.timestamp else '—' }}</td>
+                    <td class="text-mono" style="font-size: 0.85rem;">{{ attempt.ip_address }}</td>
+                    <td>{{ attempt.email or '—' }}</td>
+                </tr>
+                {% else %}
+                <tr><td colspan="3" class="text-center" style="padding: 2rem; color: var(--text-muted);">No failed logins in the last hour. ✅</td></tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}

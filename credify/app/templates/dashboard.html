@@ -4,9 +4,12 @@
 {% block content %}
 <div class="page-header">
     <h2>Dashboard</h2>
-    <a href="{{ url_for('documents.upload') }}" class="btn btn--primary">
-        <span>📤</span> Upload Document
+    {% if current_user.role not in ('verifier', 'admin') %}
+    <a href="{{ url_for('documents.upload') }}" class="btn btn--primary" style="display: flex; align-items: center; gap: 0.5rem;">
+        <img src="{{ url_for('static', filename='images/upload.png') }}" alt="" style="width: 1.75rem; height: 1.75rem; filter: brightness(0) invert(1);">
+        Upload Document
     </a>
+    {% endif %}
 </div>
 
 <!-- Stats -->
@@ -26,6 +29,34 @@
     <div class="card stat-card">
         <div class="stat-label">Pending</div>
         <div class="stat-value warning">{{ stats.pending if stats else 0 }}</div>
+    </div>
+</div>
+
+<!-- Security Status -->
+<div class="card mb-3" style="display: flex; gap: 1.5rem; flex-wrap: wrap; align-items: center; padding: 1rem 1.5rem;">
+    <div style="flex: 1; min-width: 200px;">
+        <span style="font-size: 0.8rem; color: var(--text-muted);">2FA Status:</span>
+        {% if current_user.two_fa_enabled %}
+        <span class="badge badge--verified" style="margin-left: 0.5rem;">Enabled ✅</span>
+        <form method="POST" action="{{ url_for('auth.disable_2fa') }}" style="display: inline; margin-left: 0.5rem;">
+            <button type="submit" class="btn btn--ghost" style="padding: 0.2rem 0.5rem; font-size: 0.75rem;">Disable</button>
+        </form>
+        {% else %}
+        <span class="badge badge--flagged" style="margin-left: 0.5rem;">Disabled</span>
+        <a href="{{ url_for('auth.setup_2fa') }}" class="btn btn--primary" style="padding: 0.2rem 0.5rem; font-size: 0.75rem; margin-left: 0.5rem;">Enable 2FA</a>
+        {% endif %}
+    </div>
+    <div style="flex: 1; min-width: 200px;">
+        <span style="font-size: 0.8rem; color: var(--text-muted);">KYC Status:</span>
+        {% if current_user.kyc_status == 'verified' %}
+        <span class="badge badge--verified" style="margin-left: 0.5rem;">Verified ✅</span>
+        {% elif current_user.kyc_status == 'rejected' %}
+        <span class="badge badge--flagged" style="margin-left: 0.5rem;">Rejected</span>
+        <a href="{{ url_for('auth.kyc_submit') }}" class="btn btn--secondary" style="padding: 0.2rem 0.5rem; font-size: 0.75rem; margin-left: 0.5rem;">Resubmit</a>
+        {% else %}
+        <span class="badge badge--pending" style="margin-left: 0.5rem;">{{ 'Under Review' if current_user.kyc_full_name else 'Not Submitted' }}</span>
+        <a href="{{ url_for('auth.kyc_submit') }}" class="btn btn--primary" style="padding: 0.2rem 0.5rem; font-size: 0.75rem; margin-left: 0.5rem;">{{ 'View' if current_user.kyc_full_name else 'Submit KYC' }}</a>
+        {% endif %}
     </div>
 </div>
 
