@@ -371,15 +371,75 @@ def _image_noise_fallback(file_path, score, flags):
 
 
 # ===================================================================== #
-#  4.  Confidence scoring                                               #
+#  4.  AI Generation Check (Images)                                     #
+# ===================================================================== #
+
+_AI_KEYWORDS = [
+    "midjourney",
+    "dall-e",
+    "dalle",
+    "stable diffusion",
+    "stablediffusion",
+    "novelai",
+    "artbreeder",
+    "civitai",
+    "ai generated",
+    "stealth pnginfo",
+    "comfyui"
+]
+
+def ai_generated_check(file_path: str) -> dict:
+    """Check if the image has metadata indicating it was AI generated."""
+    flags = []
+    score = 1.0
+    
+    try:
+        from PIL import Image
+        from PIL.ExifTags import TAGS
+        
+        with Image.open(file_path) as img:
+            info = img.info
+            meta_str = ""
+            if info:
+                # Text fields in PNG
+                for k, v in info.items():
+                    meta_str += f"{k}: {v}\n"
+                    
+            # EXIF fields in JPEG/PNG
+            if hasattr(img, "getexif"):
+                exif = img.getexif()
+                if exif:
+                    for tag_id, data in exif.items():
+                        tag = TAGS.get(tag_id, tag_id)
+                        meta_str += f"{tag}: {data}\n"
+                        
+            meta_str_lower = meta_str.lower()
+            for kw in _AI_KEYWORDS:
+                if kw in meta_str_lower:
+                    flags.append(f"AI generation metadata found: contains '{kw}'")
+                    score = 0.0 # Instant reject for AI generated ID
+                    break
+                    
+    except Exception as exc:
+        logger.warning("ai_generated_check error: %s", exc)
+        
+    return {
+        "score": round(score, 3),
+        "flags": flags
+    }
+
+
+# ===================================================================== #
+#  5.  Confidence scoring                                               #
 # ===================================================================== #
 
 # Weights per check family
 _WEIGHTS = {
-    "metadata": 0.25,
-    "content": 0.35,  # High weight to enforce professional requirement
-    "font": 0.20,
-    "image": 0.20,
+    "metadata": 0.20,
+    "content": 0.30,  # High weight to enforce professional requirement
+    "font": 0.15,
+    "image": 0.15,
+    "ai_gen": 0.20,
 }
 
 
@@ -457,6 +517,10 @@ def analyze_document(file_path: str) -> dict:
         img = image_noise_check(file_path)
         checks["image"] = img
         all_flags.extend(img["flags"])
+
+        ai_gen = ai_generated_check(file_path)
+        checks["ai_gen"] = ai_gen
+        all_flags.extend(ai_gen["flags"])
 
         content = content_relevance_check(file_path)
         checks["content"] = content

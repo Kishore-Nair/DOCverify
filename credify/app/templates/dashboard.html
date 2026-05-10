@@ -6,8 +6,7 @@
     <h2>Dashboard</h2>
     {% if current_user.role not in ('verifier', 'admin') %}
     <a href="{{ url_for('documents.upload') }}" class="btn btn--primary" style="display: flex; align-items: center; gap: 0.5rem;">
-        <img src="{{ url_for('static', filename='images/upload.png') }}" alt="" style="width: 1.75rem; height: 1.75rem; filter: brightness(0) invert(1);">
-        Upload Document
+        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" style="width: 20px; height: 20px;"><path stroke-linecap="round" stroke-linejoin="round" d="M3 16.5v2.25A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75V16.5m-13.5-9L12 3m0 0 4.5 4.5M12 3v13.5" /></svg> Upload Document
     </a>
     {% endif %}
 </div>
@@ -51,8 +50,11 @@
         {% if current_user.kyc_status == 'verified' %}
         <span class="badge badge--verified" style="margin-left: 0.5rem;">Verified ✅</span>
         {% elif current_user.kyc_status == 'rejected' %}
-        <span class="badge badge--flagged" style="margin-left: 0.5rem;">Rejected</span>
+        <span class="badge badge--flagged" style="margin-left: 0.5rem;" title="{{ current_user.kyc_rejection_reason or 'No reason provided' }}">Rejected</span>
         <a href="{{ url_for('auth.kyc_submit') }}" class="btn btn--secondary" style="padding: 0.2rem 0.5rem; font-size: 0.75rem; margin-left: 0.5rem;">Resubmit</a>
+        {% if current_user.kyc_rejection_reason %}
+        <div style="font-size: 0.75rem; color: var(--danger); margin-top: 0.25rem; font-weight: 500;">Reason: {{ current_user.kyc_rejection_reason }}</div>
+        {% endif %}
         {% else %}
         <span class="badge badge--pending" style="margin-left: 0.5rem;">{{ 'Under Review' if current_user.kyc_full_name else 'Not Submitted' }}</span>
         <a href="{{ url_for('auth.kyc_submit') }}" class="btn btn--primary" style="padding: 0.2rem 0.5rem; font-size: 0.75rem; margin-left: 0.5rem;">{{ 'View' if current_user.kyc_full_name else 'Submit KYC' }}</a>

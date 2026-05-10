@@ -42,6 +42,7 @@ class User(UserMixin, db.Model):
     kyc_id_type = db.Column(db.String(50), nullable=True)  # passport | national_id | drivers_license
     kyc_submitted_at = db.Column(db.DateTime, nullable=True)
     kyc_verified_at = db.Column(db.DateTime, nullable=True)
+    kyc_rejection_reason = db.Column(db.String(255), nullable=True)
 
     # -- Email verification --------------------------------------------------
     email_verified = db.Column(db.Boolean, default=False, nullable=False)

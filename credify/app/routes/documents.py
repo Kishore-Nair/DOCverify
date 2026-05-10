@@ -69,7 +69,8 @@ def _generate_qr(doc_id: int, sha256_hash: str) -> str:
         qr_dir = os.path.join(current_app.root_path, "static", "qrcodes")
         os.makedirs(qr_dir, exist_ok=True)
 
-        verify_url = f"/verify?hash={sha256_hash}"
+        from flask import url_for
+        verify_url = url_for("verify.verify", hash=sha256_hash, _external=True)
         img = qrcode.make(verify_url)
 
         filename = f"{doc_id}.png"
@@ -192,6 +193,13 @@ def report(doc_id: int):
     if doc.owner_id != current_user.id and current_user.role not in ("verifier", "admin"):
         flash("Access denied.", "error")
         return redirect(url_for("documents.dashboard"))
+        
+    # Generate QR code if missing (so old documents or skipped uploads still get one)
+    import os
+    qr_path = os.path.join(current_app.root_path, "static", "qrcodes", f"{doc.id}.png")
+    if not os.path.exists(qr_path):
+        _generate_qr(doc.id, doc.sha256_hash)
+
     return render_template("report.html", doc=doc)
 
 

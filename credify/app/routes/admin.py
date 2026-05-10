@@ -294,10 +294,12 @@ def kyc_approve(user_id):
 def kyc_reject(user_id):
     """Reject a user's KYC submission."""
     user = User.query.get_or_404(user_id)
+    reason = request.form.get("reason", "No reason provided")
     user.kyc_status = "rejected"
+    user.kyc_rejection_reason = reason
     db.session.commit()
-    logger.info("Admin %s rejected KYC for user %s", current_user.email, user.email)
-    flash(f"KYC rejected for {user.email}.", "error")
+    logger.info("Admin %s rejected KYC for user %s. Reason: %s", current_user.email, user.email, reason)
+    flash(f"KYC rejected for {user.email}. Reason: {reason}", "error")
     return redirect(url_for("admin.kyc_list"))
 
 

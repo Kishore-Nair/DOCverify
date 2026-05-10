@@ -49,6 +49,7 @@ def create_app(config_class="config.DevelopmentConfig"):
     from app.routes.documents import documents_bp, documents_api_bp
     from app.routes.verify import verify_bp, verify_api_bp
     from app.routes.admin import admin_bp
+    from app.routes.ipfs import ipfs_bp
 
     app.register_blueprint(auth_bp)             # Web: /, /login, /register, /logout
     app.register_blueprint(auth_api_bp)         # API: /auth/*
@@ -57,6 +58,7 @@ def create_app(config_class="config.DevelopmentConfig"):
     app.register_blueprint(verify_bp)           # Web: /verify
     app.register_blueprint(verify_api_bp)       # API: /verify/*
     app.register_blueprint(admin_bp)            # Web: /admin/*
+    app.register_blueprint(ipfs_bp)             # Web/API: /ipfs/*
 
     # Register error handlers returning JSON
     @app.errorhandler(400)
