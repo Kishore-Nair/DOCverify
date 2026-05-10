@@ -1,0 +1,66 @@
+{% extends 'base.html' %}
+{% block title %}Dashboard | Credify{% endblock %}
+
+{% block content %}
+<div class="dashboard-header mb-4" style="display: flex; justify-content: space-between; align-items: center;">
+    <h2>Dashboard</h2>
+    <a href="{{ url_for('documents.upload') }}" class="btn btn--primary">
+        <span class="icon">📤</span> Upload New Document
+    </a>
+</div>
+
+<div class="stats-grid mb-4" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1.5rem;">
+    <div class="card stat-card" style="margin-bottom: 0;">
+        <h3 style="color: var(--gray-600); font-size: 0.9rem; margin-bottom: 0.5rem; text-transform: uppercase;">Total Documents</h3>
+        <div style="font-size: 2rem; font-weight: 700;">{{ stats.total if stats else 0 }}</div>
+    </div>
+    <div class="card stat-card" style="border-bottom: 4px solid var(--success); margin-bottom: 0;">
+        <h3 style="color: var(--gray-600); font-size: 0.9rem; margin-bottom: 0.5rem; text-transform: uppercase;">Verified</h3>
+        <div style="font-size: 2rem; font-weight: 700; color: var(--success);">{{ stats.verified if stats else 0 }}</div>
+    </div>
+    <div class="card stat-card" style="border-bottom: 4px solid var(--danger); margin-bottom: 0;">
+        <h3 style="color: var(--gray-600); font-size: 0.9rem; margin-bottom: 0.5rem; text-transform: uppercase;">Flagged/Rejected</h3>
+        <div style="font-size: 2rem; font-weight: 700; color: var(--danger);">{{ stats.rejected if stats else 0 }}</div>
+    </div>
+    <div class="card stat-card" style="border-bottom: 4px solid var(--gray-400); margin-bottom: 0;">
+        <h3 style="color: var(--gray-600); font-size: 0.9rem; margin-bottom: 0.5rem; text-transform: uppercase;">Revocations</h3>
+        <div style="font-size: 2rem; font-weight: 700; color: var(--gray-600);">{{ stats.revoked if stats else 0 }}</div>
+    </div>
+</div>
+
+<div class="card">
+    <h3 class="mb-3">Recent Documents</h3>
+    <div style="overflow-x: auto;">
+        <table class="table">
+            <thead>
+                <tr>
+                    <th>Name</th>
+                    <th>Type</th>
+                    <th>Upload Date</th>
+                    <th>Status</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for doc in documents %}
+                <tr>
+                    <td style="font-weight: 500;">{{ doc.original_name }}</td>
+                    <td>{{ doc.doc_type or '—' }}</td>
+                    <td>{{ doc.upload_date.strftime('%Y-%m-%d %H:%M') if doc.upload_date else '—' }}</td>
+                    <td>
+                        <span class="badge badge--{{ doc.status }}">{{ doc.status|upper }}</span>
+                    </td>
+                    <td>
+                        <a href="{{ url_for('documents.report', doc_id=doc.id) }}" class="btn btn--secondary" style="padding: 0.25rem 0.5rem; font-size: 0.8rem;">View</a>
+                    </td>
+                </tr>
+                {% else %}
+                <tr>
+                    <td colspan="5" class="text-center" style="padding: 2rem; color: var(--gray-400);">No documents uploaded yet.</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}

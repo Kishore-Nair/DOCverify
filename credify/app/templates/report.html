@@ -1,0 +1,68 @@
+{% extends "base.html" %}
+
+{% block title %}Report — {{ doc.filename }} — Credify{% endblock %}
+
+{% block content %}
+<div class="report-container">
+    <div class="report-header">
+        <a href="{{ url_for('documents.dashboard') }}" class="btn btn--ghost" id="back-btn">← Dashboard</a>
+        <h1>Verification Report</h1>
+    </div>
+
+    <div class="report-grid">
+        <!-- File Info -->
+        <div class="report-card glass-card">
+            <h2>📄 File Information</h2>
+            <div class="info-rows">
+                <div class="info-row">
+                    <span class="info-key">Filename</span>
+                    <span class="info-value">{{ doc.filename }}</span>
+                </div>
+                <div class="info-row">
+                    <span class="info-key">SHA-256</span>
+                    <span class="info-value mono">{{ doc.sha256_hash }}</span>
+                </div>
+                <div class="info-row">
+                    <span class="info-key">Uploaded</span>
+                    <span class="info-value">{{ doc.upload_date.strftime('%Y-%m-%d %H:%M UTC') if doc.upload_date else '—' }}</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- AI Verdict -->
+        <div class="report-card glass-card">
+            <h2>🤖 AI Analysis</h2>
+            <div class="verdict-display verdict--{{ doc.ai_verdict | lower if doc.ai_verdict else 'pending' }}" id="ai-verdict">
+                <span class="verdict-score">{{ doc.ai_score if doc.ai_score is not none else '—' }}</span>
+                <span class="verdict-label">{{ doc.ai_verdict or 'PENDING' }}</span>
+            </div>
+        </div>
+
+        <!-- IPFS -->
+        <div class="report-card glass-card">
+            <h2>🌐 IPFS Storage</h2>
+            <div class="info-rows">
+                <div class="info-row">
+                    <span class="info-key">CID</span>
+                    <span class="info-value mono">{{ doc.ipfs_cid or 'Not uploaded' }}</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Blockchain -->
+        <div class="report-card glass-card">
+            <h2>⛓️ Blockchain Record</h2>
+            <div class="info-rows">
+                <div class="info-row">
+                    <span class="info-key">TX Hash</span>
+                    <span class="info-value mono">{{ doc.blockchain_tx_id or 'Not recorded' }}</span>
+                </div>
+                <div class="info-row">
+                    <span class="info-key">Status</span>
+                    <span class="badge badge--{{ doc.status }}">{{ doc.status | upper }}</span>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

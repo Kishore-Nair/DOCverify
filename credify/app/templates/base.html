@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}Credify{% endblock %}</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+<body>
+    <div class="app-layout">
+        <!-- Sidebar -->
+        <aside class="sidebar" id="sidebar">
+            <div class="sidebar-header">
+                <a href="{{ url_for('auth.index') }}" class="logo">CREDIFY</a>
+                <button class="menu-close" id="menu-close">✕</button>
+            </div>
+            <nav class="sidebar-nav">
+                {% if current_user.is_authenticated %}
+                    <a href="{{ url_for('documents.dashboard') }}" class="nav-link">
+                        <span class="icon">📊</span> Dashboard
+                    </a>
+                    <a href="{{ url_for('documents.upload') }}" class="nav-link">
+                        <span class="icon">📤</span> Upload
+                    </a>
+                    <a href="{{ url_for('verify.verify') }}" class="nav-link">
+                        <span class="icon">🔍</span> Verify
+                    </a>
+                {% else %}
+                    <a href="{{ url_for('verify.verify') }}" class="nav-link">
+                        <span class="icon">🔍</span> Verify
+                    </a>
+                    <a href="{{ url_for('auth.login') }}" class="nav-link">
+                        <span class="icon">🔑</span> Login
+                    </a>
+                {% endif %}
+            </nav>
+        </aside>
+
+        <!-- Main Content -->
+        <div class="main-wrapper">
+            <!-- Topbar -->
+            <header class="topbar">
+                <button class="menu-toggle" id="menu-toggle">☰</button>
+                <div class="topbar-right">
+                    {% if current_user.is_authenticated %}
+                        <span class="user-name">{{ current_user.email }}</span>
+                        <a href="{{ url_for('auth.logout') }}" class="btn btn--secondary">Logout</a>
+                    {% endif %}
+                </div>
+            </header>
+
+            <!-- Flash messages -->
+            {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+            <div class="flash-container">
+                {% for category, message in messages %}
+                <div class="flash flash--{{ category }}">
+                    <span>{{ message }}</span>
+                    <button class="flash-close" onclick="this.parentElement.remove()">✕</button>
+                </div>
+                {% endfor %}
+            </div>
+            {% endif %}
+            {% endwith %}
+
+            <!-- Page Content -->
+            <main class="content">
+                {% block content %}{% endblock %}
+            </main>
+        </div>
+    </div>
+
+    <script src="{{ url_for('static', filename='js/main.js') }}"></script>
+</body>
+</html>

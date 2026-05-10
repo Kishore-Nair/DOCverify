@@ -1,0 +1,52 @@
+{% extends "base.html" %}
+
+{% block title %}{{ 'Register' if mode == 'register' else 'Login' }} — Credify{% endblock %}
+
+{% block content %}
+<div class="auth-container">
+    <div class="auth-card glass-card">
+        <div class="auth-header">
+            <span class="auth-icon">🔐</span>
+            <h1 id="auth-title">{{ 'Create Account' if mode == 'register' else 'Welcome Back' }}</h1>
+            <p class="auth-subtitle">
+                {{ 'Join Credify to verify and secure your documents on the blockchain.' if mode == 'register' else 'Log in to your Credify account.' }}
+            </p>
+        </div>
+
+        <form method="POST" class="auth-form" id="auth-form">
+            <div class="form-group">
+                <label for="email">Email</label>
+                <input type="email" id="email" name="email" placeholder="you@example.com" required autofocus>
+            </div>
+
+            {% if mode == 'register' %}
+            <div class="form-group">
+                <label for="role">Role</label>
+                <select id="role" name="role">
+                    <option value="citizen">Citizen</option>
+                    <option value="issuer">Issuer</option>
+                    <option value="verifier">Verifier</option>
+                </select>
+            </div>
+            {% endif %}
+
+            <div class="form-group">
+                <label for="password">Password</label>
+                <input type="password" id="password" name="password" placeholder="••••••••" required>
+            </div>
+
+            <button type="submit" class="btn btn--primary btn--full" id="auth-submit">
+                {{ 'Create Account' if mode == 'register' else 'Log In' }}
+            </button>
+        </form>
+
+        <div class="auth-footer">
+            {% if mode == 'register' %}
+                <p>Already have an account? <a href="{{ url_for('auth.login') }}">Log in</a></p>
+            {% else %}
+                <p>Don't have an account? <a href="{{ url_for('auth.register') }}">Register</a></p>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endblock %}
