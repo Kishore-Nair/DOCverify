@@ -1,0 +1,61 @@
+{% extends "base.html" %}
+{% block title %}Audit Log — Admin | Credify{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h2>📋 System Audit Log</h2>
+    <a href="{{ url_for('admin.dashboard') }}" class="btn btn--ghost">← Admin Portal</a>
+</div>
+
+<div class="card">
+    <div style="overflow-x: auto;">
+        <table class="table">
+            <thead>
+                <tr>
+                    <th>Time (UTC)</th>
+                    <th>Action</th>
+                    <th>Document</th>
+                    <th>Performed By</th>
+                    <th>Details</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for a in audits %}
+                <tr>
+                    <td style="color: var(--text-muted); font-size: 0.85rem;">{{ a.timestamp.strftime('%Y-%m-%d %H:%M:%S') if a.timestamp else '—' }}</td>
+                    <td><span class="badge badge--{{ 'verified' if a.action == 'upload' else 'pending' if a.action == 'verify' else 'revoked' if 'revoke' in a.action else 'flagged' }}">{{ a.action }}</span></td>
+                    <td>
+                        <a href="{{ url_for('admin.document_detail', doc_id=a.document_id) }}">#{{ a.document_id }}</a>
+                    </td>
+                    <td style="font-size: 0.85rem;">{{ a.performed_by }}</td>
+                    <td style="font-size: 0.8rem; color: var(--text-muted); max-width: 300px; word-break: break-all;">
+                        {% if a.details %}
+                            {% for k, v in a.details.items() %}
+                            <span style="color: var(--text-secondary);">{{ k }}:</span> {{ v }}<br>
+                            {% endfor %}
+                        {% else %}—{% endif %}
+                    </td>
+                </tr>
+                {% else %}
+                <tr><td colspan="5" class="text-center" style="padding: 3rem; color: var(--text-muted);">No audit logs found.</td></tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    
+    <!-- Pagination -->
+    {% if pagination and pagination.pages > 1 %}
+    <div style="display: flex; justify-content: center; gap: 0.5rem; margin-top: 1.5rem; padding-top: 1.5rem; border-top: 1px solid var(--border);">
+        {% if pagination.has_prev %}
+        <a href="{{ url_for('admin.audit_log', page=pagination.prev_num) }}" class="btn btn--secondary" style="padding: 0.3rem 0.8rem;">← Prev</a>
+        {% endif %}
+        
+        <span style="padding: 0.3rem 0.8rem; color: var(--text-secondary); font-size: 0.9rem;">Page {{ pagination.page }} of {{ pagination.pages }}</span>
+        
+        {% if pagination.has_next %}
+        <a href="{{ url_for('admin.audit_log', page=pagination.next_num) }}" class="btn btn--secondary" style="padding: 0.3rem 0.8rem;">Next →</a>
+        {% endif %}
+    </div>
+    {% endif %}
+</div>
+{% endblock %}

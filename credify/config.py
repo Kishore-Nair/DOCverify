@@ -2,15 +2,12 @@
 
 import os
 from datetime import timedelta
-
 from dotenv import load_dotenv
 
 load_dotenv()
 
-
 class Config:
     """Base configuration."""
-
     SECRET_KEY = os.getenv("SECRET_KEY", "dev-fallback-key")
     SQLALCHEMY_DATABASE_URI = os.getenv("DATABASE_URL", "sqlite:///credify.db")
     SQLALCHEMY_TRACK_MODIFICATIONS = False
@@ -31,5 +28,15 @@ class Config:
     CONTRACT_ADDRESS = os.getenv("CONTRACT_ADDRESS", "")
 
     # Upload settings
-    MAX_CONTENT_LENGTH = 16 * 1024 * 1024  # 16 MB max upload
-    UPLOAD_FOLDER = os.path.join(os.path.dirname(__file__), "uploads")
+    MAX_CONTENT_LENGTH = 10 * 1024 * 1024  # 10MB max upload size
+    UPLOAD_FOLDER = os.path.join(os.path.dirname(__file__), "app", "static", "uploads")
+    QR_FOLDER = os.path.join(os.path.dirname(__file__), "app", "static", "qrcodes")
+
+class DevelopmentConfig(Config):
+    """Development configuration."""
+    DEBUG = True
+
+class ProductionConfig(Config):
+    """Production configuration."""
+    DEBUG = False
+    # Setup production secure settings here

@@ -1,0 +1,46 @@
+{% extends "base.html" %}
+{% block title %}All Users — Admin | Credify{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h2>👥 All Users ({{ users|length }})</h2>
+    <a href="{{ url_for('admin.dashboard') }}" class="btn btn--ghost">← Admin Portal</a>
+</div>
+
+<div class="card">
+    <div style="overflow-x: auto;">
+        <table class="table">
+            <thead>
+                <tr>
+                    <th>ID</th>
+                    <th>Email</th>
+                    <th>Role</th>
+                    <th>Documents</th>
+                    <th>Joined</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for item in users %}
+                <tr>
+                    <td style="color: var(--text-muted);">#{{ item.user.id }}</td>
+                    <td style="font-weight: 500;">{{ item.user.email }}</td>
+                    <td>
+                        <span class="badge badge--{{ 'verified' if item.user.role == 'admin' else 'pending' if item.user.role == 'issuer' else 'flagged' if item.user.role == 'verifier' else 'revoked' }}">
+                            {{ item.user.role }}
+                        </span>
+                    </td>
+                    <td>{{ item.doc_count }}</td>
+                    <td style="color: var(--text-muted); font-size: 0.85rem;">{{ item.user.created_at.strftime('%Y-%m-%d %H:%M') if item.user.created_at else '—' }}</td>
+                    <td>
+                        <a href="{{ url_for('admin.user_detail', user_id=item.user.id) }}" class="btn btn--secondary" style="padding: 0.25rem 0.6rem; font-size: 0.75rem;">View</a>
+                    </td>
+                </tr>
+                {% else %}
+                <tr><td colspan="6" class="text-center" style="padding: 3rem; color: var(--text-muted);">No users found.</td></tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}

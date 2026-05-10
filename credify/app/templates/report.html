@@ -3,65 +3,51 @@
 {% block title %}Report — {{ doc.filename }} — Credify{% endblock %}
 
 {% block content %}
-<div class="report-container">
-    <div class="report-header">
-        <a href="{{ url_for('documents.dashboard') }}" class="btn btn--ghost" id="back-btn">← Dashboard</a>
-        <h1>Verification Report</h1>
+<div style="max-width: 900px; margin: 0 auto;">
+    <div class="page-header">
+        <div>
+            <a href="{{ url_for('documents.dashboard') }}" class="btn btn--ghost" style="margin-bottom: 0.5rem;">← Dashboard</a>
+            <h2>Verification Report</h2>
+        </div>
+        <span class="badge badge--{{ doc.status }}" style="font-size: 0.85rem; padding: 0.4rem 1rem;">{{ doc.status | upper }}</span>
     </div>
 
     <div class="report-grid">
         <!-- File Info -->
-        <div class="report-card glass-card">
-            <h2>📄 File Information</h2>
+        <div class="card">
+            <h2 style="font-size: 1rem; font-weight: 600; color: var(--text-secondary); margin-bottom: 1rem;">📄 File Information</h2>
             <div class="info-rows">
-                <div class="info-row">
-                    <span class="info-key">Filename</span>
-                    <span class="info-value">{{ doc.filename }}</span>
-                </div>
-                <div class="info-row">
-                    <span class="info-key">SHA-256</span>
-                    <span class="info-value mono">{{ doc.sha256_hash }}</span>
-                </div>
-                <div class="info-row">
-                    <span class="info-key">Uploaded</span>
-                    <span class="info-value">{{ doc.upload_date.strftime('%Y-%m-%d %H:%M UTC') if doc.upload_date else '—' }}</span>
-                </div>
-            </div>
-        </div>
-
-        <!-- AI Verdict -->
-        <div class="report-card glass-card">
-            <h2>🤖 AI Analysis</h2>
-            <div class="verdict-display verdict--{{ doc.ai_verdict | lower if doc.ai_verdict else 'pending' }}" id="ai-verdict">
-                <span class="verdict-score">{{ doc.ai_score if doc.ai_score is not none else '—' }}</span>
-                <span class="verdict-label">{{ doc.ai_verdict or 'PENDING' }}</span>
+                <div class="info-row"><span class="info-key">Filename</span><span class="info-value">{{ doc.original_name }}</span></div>
+                <div class="info-row"><span class="info-key">Type</span><span class="info-value">{{ doc.doc_type or '—' }}</span></div>
+                <div class="info-row"><span class="info-key">Issuer</span><span class="info-value">{{ doc.issuer_name or '—' }}</span></div>
+                <div class="info-row"><span class="info-key">SHA-256</span><span class="info-value mono text-mono" style="font-size: 0.75rem;">{{ doc.sha256_hash }}</span></div>
+                <div class="info-row"><span class="info-key">Uploaded</span><span class="info-value">{{ doc.upload_date.strftime('%Y-%m-%d %H:%M UTC') if doc.upload_date else '—' }}</span></div>
             </div>
         </div>
 
         <!-- IPFS -->
-        <div class="report-card glass-card">
-            <h2>🌐 IPFS Storage</h2>
+        <div class="card">
+            <h2 style="font-size: 1rem; font-weight: 600; color: var(--text-secondary); margin-bottom: 1rem;">🌐 IPFS Storage</h2>
             <div class="info-rows">
-                <div class="info-row">
-                    <span class="info-key">CID</span>
-                    <span class="info-value mono">{{ doc.ipfs_cid or 'Not uploaded' }}</span>
-                </div>
+                <div class="info-row"><span class="info-key">CID</span><span class="info-value mono text-mono" style="font-size: 0.75rem;">{{ doc.ipfs_cid or 'Not uploaded' }}</span></div>
             </div>
         </div>
 
         <!-- Blockchain -->
-        <div class="report-card glass-card">
-            <h2>⛓️ Blockchain Record</h2>
+        <div class="card">
+            <h2 style="font-size: 1rem; font-weight: 600; color: var(--text-secondary); margin-bottom: 1rem;">⛓️ Blockchain Record</h2>
             <div class="info-rows">
-                <div class="info-row">
-                    <span class="info-key">TX Hash</span>
-                    <span class="info-value mono">{{ doc.blockchain_tx_id or 'Not recorded' }}</span>
-                </div>
-                <div class="info-row">
-                    <span class="info-key">Status</span>
-                    <span class="badge badge--{{ doc.status }}">{{ doc.status | upper }}</span>
-                </div>
+                <div class="info-row"><span class="info-key">TX Hash</span><span class="info-value mono text-mono" style="font-size: 0.75rem;">{{ doc.blockchain_tx_id or 'Not recorded' }}</span></div>
+                <div class="info-row"><span class="info-key">Status</span><span class="badge badge--{{ doc.status }}">{{ doc.status | upper }}</span></div>
             </div>
+        </div>
+
+        <!-- QR Code -->
+        <div class="card text-center">
+            <h2 style="font-size: 1rem; font-weight: 600; color: var(--text-secondary); margin-bottom: 1rem;">📱 QR Code</h2>
+            {% set qr_path = '/static/qrcodes/' ~ doc.id ~ '.png' %}
+            <img src="{{ qr_path }}" alt="QR Code" style="max-width: 180px; border-radius: var(--radius-sm); border: 1px solid var(--border); padding: 0.5rem; background: #fff;" onerror="this.style.display='none'; this.nextElementSibling.style.display='block';">
+            <p style="display: none; color: var(--text-muted); font-size: 0.85rem;">QR code not available.</p>
         </div>
     </div>
 </div>

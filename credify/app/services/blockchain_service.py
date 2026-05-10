@@ -161,7 +161,7 @@ def _send_tx(w3, txn_builder):
     })
 
     signed = account.sign_transaction(txn)
-    tx_hash = w3.eth.send_raw_transaction(signed.raw_transaction)
+    tx_hash = w3.eth.send_raw_transaction(signed.rawTransaction)
     hex_hash = tx_hash.hex()
 
     logger.info("TX sent: %s", hex_hash)
@@ -211,7 +211,7 @@ def deploy_contract() -> str:
         })
 
         signed = account.sign_transaction(txn)
-        tx_hash = w3.eth.send_raw_transaction(signed.raw_transaction)
+        tx_hash = w3.eth.send_raw_transaction(signed.rawTransaction)
         receipt = w3.eth.wait_for_transaction_receipt(tx_hash, timeout=60)
 
         address = receipt.contractAddress
@@ -269,15 +269,15 @@ def verify_document(sha256_hash: str) -> dict:
     try:
         w3 = _get_web3()
         contract = _get_contract(w3)
-        exists, timestamp, cid = contract.functions.verifyDocument(
+        exists, timestamp, cid, revoked = contract.functions.verifyDocument(
             doc_hash_bytes
         ).call()
 
         logger.info(
-            "verify_document  hash=%s  exists=%s  ts=%d",
-            sha256_hash[:16], exists, timestamp,
+            "verify_document  hash=%s  exists=%s  ts=%d  revoked=%s",
+            sha256_hash[:16], exists, timestamp, revoked
         )
-        return {"exists": exists, "timestamp": timestamp, "cid": cid}
+        return {"exists": exists, "timestamp": timestamp, "cid": cid, "revoked": revoked}
 
     except Exception as exc:
         logger.warning("verify_document failed (%s) — returning simulated result", exc)

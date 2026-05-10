@@ -1,0 +1,78 @@
+{% extends "base.html" %}
+{% block title %}User: {{ user.email }} — Admin | Credify{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <div>
+        <a href="{{ url_for('admin.users') }}" class="btn btn--ghost" style="margin-bottom: 0.5rem;">← All Users</a>
+        <h2>{{ user.email }}</h2>
+    </div>
+    <span class="badge badge--{{ 'verified' if user.role == 'admin' else 'pending' }}" style="font-size: 0.85rem; padding: 0.4rem 1rem;">{{ user.role }}</span>
+</div>
+
+<div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem;">
+    <!-- User Info -->
+    <div class="card">
+        <h3 style="font-size: 1rem; font-weight: 600; color: var(--text-secondary); margin-bottom: 1rem;">User Information</h3>
+        <div class="info-rows">
+            <div class="info-row"><span class="info-key">ID</span><span class="info-value">#{{ user.id }}</span></div>
+            <div class="info-row"><span class="info-key">Email</span><span class="info-value">{{ user.email }}</span></div>
+            <div class="info-row"><span class="info-key">Role</span><span class="info-value">{{ user.role }}</span></div>
+            <div class="info-row"><span class="info-key">Joined</span><span class="info-value">{{ user.created_at.strftime('%Y-%m-%d %H:%M UTC') if user.created_at else '—' }}</span></div>
+            <div class="info-row"><span class="info-key">Documents</span><span class="info-value">{{ documents|length }}</span></div>
+        </div>
+    </div>
+
+    <!-- Admin Actions -->
+    <div class="card">
+        <h3 style="font-size: 1rem; font-weight: 600; color: var(--text-secondary); margin-bottom: 1rem;">Admin Actions</h3>
+
+        <!-- Change Role -->
+        <form method="POST" action="{{ url_for('admin.change_role', user_id=user.id) }}" style="margin-bottom: 1.5rem;">
+            <div class="form-group" style="margin-bottom: 0.75rem;">
+                <label>Change Role</label>
+                <select name="role">
+                    {% for r in ['citizen', 'issuer', 'verifier', 'admin'] %}
+                    <option value="{{ r }}" {% if user.role == r %}selected{% endif %}>{{ r|capitalize }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <button type="submit" class="btn btn--primary" style="font-size: 0.85rem;">Update Role</button>
+        </form>
+
+        <!-- Delete User -->
+        {% if user.id != current_user.id %}
+        <div style="border-top: 1px solid var(--border); padding-top: 1rem;">
+            <p style="color: var(--danger); font-size: 0.85rem; margin-bottom: 0.75rem;">⚠️ Danger Zone</p>
+            <form method="POST" action="{{ url_for('admin.delete_user', user_id=user.id) }}" onsubmit="return confirm('Delete user {{ user.email }}? This cannot be undone.');">
+                <button type="submit" class="btn btn--danger" style="font-size: 0.85rem;">Delete User</button>
+            </form>
+        </div>
+        {% endif %}
+    </div>
+</div>
+
+<!-- User's Documents -->
+<div class="card mt-4">
+    <h3 style="font-size: 1rem; font-weight: 600; color: var(--text-secondary); margin-bottom: 1rem;">Documents ({{ documents|length }})</h3>
+    <div style="overflow-x: auto;">
+        <table class="table">
+            <thead><tr><th>ID</th><th>Name</th><th>Type</th><th>Status</th><th>Uploaded</th><th></th></tr></thead>
+            <tbody>
+                {% for doc in documents %}
+                <tr>
+                    <td style="color: var(--text-muted);">#{{ doc.id }}</td>
+                    <td style="font-weight: 500;">{{ doc.original_name }}</td>
+                    <td>{{ doc.doc_type or '—' }}</td>
+                    <td><span class="badge badge--{{ doc.status }}">{{ doc.status }}</span></td>
+                    <td style="color: var(--text-muted); font-size: 0.85rem;">{{ doc.upload_date.strftime('%Y-%m-%d') if doc.upload_date else '—' }}</td>
+                    <td><a href="{{ url_for('admin.document_detail', doc_id=doc.id) }}" class="btn btn--secondary" style="padding: 0.25rem 0.6rem; font-size: 0.75rem;">View</a></td>
+                </tr>
+                {% else %}
+                <tr><td colspan="6" class="text-center" style="padding: 2rem; color: var(--text-muted);">No documents.</td></tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}

@@ -44,6 +44,17 @@ _SUSPICIOUS_CREATORS = [
     "libreoffice draw",
 ]
 
+# Keywords used to determine if a document is professional/official
+_PROFESSIONAL_KEYWORDS = [
+    "course", "job", "government", "student", "employee",
+    "university", "college", "school", "certificate", "degree",
+    "diploma", "transcript", "salary", "payslip", "employment",
+    "contract", "offer", "identity", "passport", "license",
+    "visa", "tax", "revenue", "department", "ministry", "board",
+    "academic", "institution", "certify", "official", "authorized",
+    "republic", "state", "national", "identification", "grade"
+]
+
 
 # ===================================================================== #
 #  1.  Metadata check  (PDF)                                            #
@@ -111,6 +122,61 @@ def metadata_check(file_path: str) -> dict:
     score = max(score, 0.0)
     logger.debug("metadata_check score=%.2f flags=%s", score, flags)
     return {"score": round(score, 3), "flags": flags, "metadata": raw_meta}
+
+
+# ===================================================================== #
+#  1b. Content relevance check (PDF)                                    #
+# ===================================================================== #
+
+def content_relevance_check(file_path: str) -> dict:
+    """Analyze the text content to ensure it is a professional document.
+    
+    Extracts text from the PDF or Image (via OCR) and checks for keywords
+    related to courses, jobs, government, students, or employees. If no
+    relevant keywords are found, the document is heavily penalized.
+    """
+    flags: list[str] = []
+    score = 1.0
+    text_extracted = False
+    full_text = ""
+    ext = os.path.splitext(file_path)[1].lower()
+    
+    try:
+        if ext in _PDF_EXTS:
+            from pypdf import PdfReader
+            reader = PdfReader(file_path)
+            for page in reader.pages:
+                text = page.extract_text()
+                if text:
+                    full_text += text.lower() + " "
+        elif ext in _IMG_EXTS:
+            from PIL import Image
+            import pytesseract
+            img = Image.open(file_path)
+            text = pytesseract.image_to_string(img)
+            if text:
+                full_text += text.lower() + " "
+                
+        if full_text.strip():
+            text_extracted = True
+            matches = [kw for kw in _PROFESSIONAL_KEYWORDS if kw in full_text]
+            
+            if len(matches) < 2:
+                flags.append("Content Rejected: Does not appear to be a professional document (no course/job/govt/student keywords found).")
+                score -= 0.8  # Massive penalty to force rejection
+            else:
+                logger.debug("Professional keywords found: %s", matches)
+        else:
+            flags.append("Content Warning: Document contains no extractable text (blank or illegible). Unable to verify relevance.")
+            score -= 0.6
+            
+    except Exception as exc:
+        logger.warning("content_relevance_check error: %s", exc)
+        flags.append(f"Could not analyze document text: {exc}")
+        score -= 0.1
+
+    score = max(score, 0.0)
+    return {"score": round(score, 3), "flags": flags, "text_extracted": text_extracted}
 
 
 # ===================================================================== #
@@ -310,9 +376,10 @@ def _image_noise_fallback(file_path, score, flags):
 
 # Weights per check family
 _WEIGHTS = {
-    "metadata": 0.40,
-    "font": 0.30,
-    "image": 0.30,
+    "metadata": 0.25,
+    "content": 0.35,  # High weight to enforce professional requirement
+    "font": 0.20,
+    "image": 0.20,
 }
 
 
@@ -377,6 +444,10 @@ def analyze_document(file_path: str) -> dict:
         checks["metadata"] = meta
         all_flags.extend(meta["flags"])
 
+        content = content_relevance_check(file_path)
+        checks["content"] = content
+        all_flags.extend(content["flags"])
+
         font = font_consistency_check(file_path)
         checks["font"] = font
         all_flags.extend(font["flags"])
@@ -386,6 +457,10 @@ def analyze_document(file_path: str) -> dict:
         img = image_noise_check(file_path)
         checks["image"] = img
         all_flags.extend(img["flags"])
+
+        content = content_relevance_check(file_path)
+        checks["content"] = content
+        all_flags.extend(content["flags"])
 
     # -- For non-PDF / non-image files, run a basic size check --
     if not checks:

@@ -52,9 +52,9 @@ class CryptRC4(CryptBase):
             s[i], s[j] = s[j], s[i]
             x = s[(s[i] + s[j]) % 256]
             out[k] = data[k] ^ x
-        return bytes(out)
+        return bytes(bytearray(out))
 
-    def decrypt(self, data: bytes, *, strict: bool = True) -> bytes:
+    def decrypt(self, data: bytes) -> bytes:
         return self.encrypt(data)
 
 
@@ -65,7 +65,7 @@ class CryptAES(CryptBase):
     def encrypt(self, data: bytes) -> bytes:
         raise DependencyError(_DEPENDENCY_ERROR_STR)
 
-    def decrypt(self, data: bytes, *, strict: bool = True) -> bytes:
+    def decrypt(self, data: bytes) -> bytes:
         raise DependencyError(_DEPENDENCY_ERROR_STR)
 
 

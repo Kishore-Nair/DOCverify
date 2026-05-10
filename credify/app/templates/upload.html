@@ -3,19 +3,22 @@
 
 {% block content %}
 <div style="max-width: 800px; margin: 0 auto;">
-    <h2 class="mb-4">Upload Document</h2>
-    
+    <div class="page-header">
+        <h2>Upload Document</h2>
+    </div>
+
+    <!-- Upload Form -->
     <div class="card" id="upload-form-container">
         <form id="upload-form" enctype="multipart/form-data">
-            <div class="dropzone mb-4" id="upload-dropzone">
+            <div class="dropzone mb-3" id="upload-dropzone">
                 <div class="dropzone-icon">📄</div>
                 <div class="dropzone-text">Drag & drop your document here</div>
                 <div class="dropzone-hint">Supports PDF, PNG, JPG (Max 10MB)</div>
                 <input type="file" name="file" accept=".pdf,.png,.jpg,.jpeg" required>
             </div>
-            
-            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;" class="mb-4">
-                <div class="form-group mb-0">
+
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;" class="mb-3">
+                <div class="form-group" style="margin-bottom: 0;">
                     <label>Document Type</label>
                     <select name="doc_type" required>
                         <option value="">Select Type...</option>
@@ -25,75 +28,68 @@
                         <option value="other">Other</option>
                     </select>
                 </div>
-                <div class="form-group mb-0">
+                <div class="form-group" style="margin-bottom: 0;">
                     <label>Issuer Name</label>
                     <input type="text" name="issuer_name" placeholder="E.g., University of Science" required>
                 </div>
             </div>
-            
-            <div class="form-group mb-4">
-                <label>Issue Date</label>
-                <input type="date" name="issue_date">
-            </div>
-            
-            <button type="submit" class="btn btn--primary" style="width: 100%;">Upload & Verify</button>
+
+            <button type="submit" class="btn btn--primary btn--full" id="upload-submit">Upload & Verify</button>
         </form>
 
         <!-- Progress Steps -->
-        <div id="upload-progress" style="display: none; text-align: center; margin-top: 2rem;">
-            <div class="progress-bar-container" style="display: block; margin-bottom: 1.5rem;">
+        <div id="upload-progress" style="display: none; margin-top: 2rem;">
+            <div class="progress-bar-container" style="display: block;">
                 <div class="progress-bar animated"></div>
             </div>
-            <div style="display: flex; justify-content: space-between; font-size: 0.85rem; color: var(--gray-600); font-weight: 500;">
-                <span id="step-1" class="active" style="color: var(--primary);">1. Uploading</span>
-                <span id="step-2">2. AI Analysis</span>
-                <span id="step-3">3. Blockchain</span>
-                <span id="step-4">4. Done</span>
+            <div class="steps mt-2">
+                <div class="step active" id="step-1"><div class="step-dot">1</div><span>Upload</span></div>
+                <div class="step" id="step-2"><div class="step-dot">2</div><span>AI Analysis</span></div>
+                <div class="step" id="step-3"><div class="step-dot">3</div><span>Blockchain</span></div>
+                <div class="step" id="step-4"><div class="step-dot">4</div><span>Done</span></div>
             </div>
-            <p style="margin-top: 1rem; color: var(--gray-600); font-size: 0.9rem;">Processing document... Please do not close this window.</p>
+            <p class="text-center mt-2" style="color: var(--text-muted); font-size: 0.9rem;">Processing document... Please wait.</p>
         </div>
     </div>
 
-    <!-- Result Card -->
+    <!-- Result Card (hidden) -->
     <div class="card" id="upload-result" style="display: none;">
-        <div style="text-align: center; margin-bottom: 2rem;">
-            <div style="font-size: 4rem; margin-bottom: 1rem;" id="result-icon">✅</div>
-            <h2 id="result-title" style="color: var(--success);">Document Registered!</h2>
+        <div class="text-center mb-4">
+            <div id="result-icon" style="font-size: 4rem;">✅</div>
+            <h2 id="result-title" style="color: var(--success); margin-top: 0.5rem;">Document Registered!</h2>
         </div>
-        
-        <div style="display: grid; grid-template-columns: 1fr 2fr; gap: 2rem; align-items: center;">
-            <div style="text-align: center; border-right: 1px solid var(--gray-200); padding-right: 2rem;">
-                <img id="result-qr" src="" alt="QR Code" style="width: 100%; max-width: 200px; margin-bottom: 1rem; border: 1px solid var(--gray-200); border-radius: var(--radius); padding: 0.5rem;">
-                <div>
-                    <h4 style="color: var(--gray-600); font-size: 0.85rem; text-transform: uppercase;">Confidence Score</h4>
-                    <div style="font-size: 2.5rem; font-weight: 700; color: var(--success);" id="result-score">99%</div>
+
+        <div style="display: grid; grid-template-columns: 1fr 2fr; gap: 2rem; align-items: start;">
+            <div class="text-center">
+                <img id="result-qr" src="" alt="QR Code" style="width: 100%; max-width: 180px; border-radius: var(--radius-sm); border: 1px solid var(--border); padding: 0.5rem; background: #fff;">
+                <div class="mt-2">
+                    <div style="font-size: 0.75rem; color: var(--text-muted); text-transform: uppercase;">Confidence</div>
+                    <div id="result-score" style="font-size: 2rem; font-weight: 800; color: var(--success);">—</div>
                 </div>
             </div>
             <div>
-                <table class="table" style="font-size: 0.9rem;">
+                <table class="table" style="font-size: 0.85rem;">
                     <tbody>
-                        <tr>
-                            <th style="width: 35%;">SHA-256 Hash</th>
-                            <td style="font-family: monospace; word-break: break-all;" id="result-hash"></td>
-                        </tr>
-                        <tr>
-                            <th>IPFS CID</th>
-                            <td style="font-family: monospace; word-break: break-all;"><a href="#" id="result-ipfs" target="_blank" style="color: var(--primary);"></a></td>
-                        </tr>
-                        <tr>
-                            <th>Blockchain TX</th>
-                            <td style="font-family: monospace; word-break: break-all;" id="result-tx"></td>
-                        </tr>
-                        <tr>
-                            <th>Document ID</th>
-                            <td id="result-id"></td>
-                        </tr>
+                        <tr><th style="width: 35%;">SHA-256</th><td class="text-mono" style="word-break: break-all;" id="result-hash"></td></tr>
+                        <tr><th>IPFS CID</th><td class="text-mono" style="word-break: break-all;" id="result-ipfs"></td></tr>
+                        <tr><th>Blockchain TX</th><td class="text-mono" style="word-break: break-all;" id="result-tx"></td></tr>
+                        <tr><th>Document ID</th><td id="result-id"></td></tr>
                     </tbody>
                 </table>
-                <div style="margin-top: 1.5rem; text-align: right;">
+                <div class="mt-4" style="text-align: right;">
                     <a href="{{ url_for('documents.dashboard') }}" class="btn btn--secondary">Back to Dashboard</a>
                 </div>
             </div>
+        </div>
+    </div>
+
+    <!-- Error Card (hidden) -->
+    <div class="card" id="upload-error" style="display: none;">
+        <div class="text-center">
+            <div style="font-size: 4rem;">❌</div>
+            <h2 style="color: var(--danger); margin-top: 0.5rem;">Upload Failed</h2>
+            <p id="error-message" style="color: var(--text-muted); margin-top: 0.5rem;"></p>
+            <button class="btn btn--primary mt-4" onclick="location.reload()">Try Again</button>
         </div>
     </div>
 </div>

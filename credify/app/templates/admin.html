@@ -1,0 +1,115 @@
+{% extends "base.html" %}
+{% block title %}Admin Portal | Credify{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h2>⚙️ Admin Portal</h2>
+    <div style="display: flex; gap: 0.5rem;">
+        <a href="{{ url_for('admin.users') }}" class="btn btn--secondary">All Users</a>
+        <a href="{{ url_for('admin.documents') }}" class="btn btn--secondary">All Documents</a>
+        <a href="{{ url_for('admin.audit_log') }}" class="btn btn--secondary">Audit Log</a>
+    </div>
+</div>
+
+<!-- Stats Overview -->
+<div class="stats-grid" style="grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));">
+    <div class="card stat-card">
+        <div class="stat-label">Users</div>
+        <div class="stat-value">{{ stats.total_users }}</div>
+    </div>
+    <div class="card stat-card">
+        <div class="stat-label">Documents</div>
+        <div class="stat-value">{{ stats.total_docs }}</div>
+    </div>
+    <div class="card stat-card">
+        <div class="stat-label">Verified</div>
+        <div class="stat-value success">{{ stats.verified }}</div>
+    </div>
+    <div class="card stat-card">
+        <div class="stat-label">Flagged</div>
+        <div class="stat-value danger">{{ stats.flagged }}</div>
+    </div>
+    <div class="card stat-card">
+        <div class="stat-label">Revoked</div>
+        <div class="stat-value muted">{{ stats.revoked }}</div>
+    </div>
+    <div class="card stat-card">
+        <div class="stat-label">Pending</div>
+        <div class="stat-value warning">{{ stats.pending }}</div>
+    </div>
+    <div class="card stat-card">
+        <div class="stat-label">Audit Entries</div>
+        <div class="stat-value">{{ stats.total_audits }}</div>
+    </div>
+</div>
+
+<!-- Two-column: Recent Users + Recent Docs -->
+<div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem;">
+    <!-- Recent Users -->
+    <div class="card">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+            <h3 style="font-size: 1rem; font-weight: 600; color: var(--text-secondary);">Recent Users</h3>
+            <a href="{{ url_for('admin.users') }}" style="font-size: 0.8rem;">View all →</a>
+        </div>
+        <table class="table">
+            <thead><tr><th>Email</th><th>Role</th><th>Joined</th></tr></thead>
+            <tbody>
+                {% for u in recent_users %}
+                <tr>
+                    <td><a href="{{ url_for('admin.user_detail', user_id=u.id) }}">{{ u.email }}</a></td>
+                    <td><span class="badge badge--{{ 'verified' if u.role == 'admin' else 'pending' }}">{{ u.role }}</span></td>
+                    <td style="color: var(--text-muted); font-size: 0.85rem;">{{ u.created_at.strftime('%Y-%m-%d') if u.created_at else '—' }}</td>
+                </tr>
+                {% else %}
+                <tr><td colspan="3" class="text-center" style="color: var(--text-muted); padding: 2rem;">No users yet.</td></tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+
+    <!-- Recent Documents -->
+    <div class="card">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+            <h3 style="font-size: 1rem; font-weight: 600; color: var(--text-secondary);">Recent Documents</h3>
+            <a href="{{ url_for('admin.documents') }}" style="font-size: 0.8rem;">View all →</a>
+        </div>
+        <table class="table">
+            <thead><tr><th>Name</th><th>Owner</th><th>Status</th></tr></thead>
+            <tbody>
+                {% for d in recent_docs %}
+                <tr>
+                    <td><a href="{{ url_for('admin.document_detail', doc_id=d.id) }}">{{ d.original_name }}</a></td>
+                    <td style="color: var(--text-muted); font-size: 0.85rem;">{{ d.owner.email if d.owner else 'Unknown' }}</td>
+                    <td><span class="badge badge--{{ d.status }}">{{ d.status }}</span></td>
+                </tr>
+                {% else %}
+                <tr><td colspan="3" class="text-center" style="color: var(--text-muted); padding: 2rem;">No documents yet.</td></tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<!-- Recent Audit Log -->
+<div class="card mt-4">
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+        <h3 style="font-size: 1rem; font-weight: 600; color: var(--text-secondary);">Recent Activity</h3>
+        <a href="{{ url_for('admin.audit_log') }}" style="font-size: 0.8rem;">Full log →</a>
+    </div>
+    <table class="table">
+        <thead><tr><th>Time</th><th>Action</th><th>Doc ID</th><th>By</th></tr></thead>
+        <tbody>
+            {% for a in recent_audits %}
+            <tr>
+                <td style="color: var(--text-muted); font-size: 0.85rem;">{{ a.timestamp.strftime('%m-%d %H:%M') if a.timestamp else '—' }}</td>
+                <td><span class="badge badge--{{ 'verified' if a.action == 'upload' else 'pending' if a.action == 'verify' else 'revoked' }}">{{ a.action }}</span></td>
+                <td><a href="{{ url_for('admin.document_detail', doc_id=a.document_id) }}">#{{ a.document_id }}</a></td>
+                <td style="font-size: 0.85rem;">{{ a.performed_by }}</td>
+            </tr>
+            {% else %}
+            <tr><td colspan="4" class="text-center" style="color: var(--text-muted); padding: 2rem;">No activity yet.</td></tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% endblock %}

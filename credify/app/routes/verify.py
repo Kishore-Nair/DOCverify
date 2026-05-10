@@ -6,6 +6,7 @@ API blueprint ``verify_api_bp``     /verify/hash, /verify/upload, /verify/qr/<id
 
 import os
 import tempfile
+import logging
 from flask import (
     Blueprint,
     render_template,
@@ -22,6 +23,7 @@ from app.services.hasher import hash_file
 from app.services.blockchain_service import verify_document as blockchain_verify
 from app.services.ipfs_service import get_file_url
 
+logger = logging.getLogger(__name__)
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -37,50 +39,72 @@ def _api_err(message="Something went wrong", status=400):
 
 def _verify_hash_logic(sha256_hash: str) -> dict:
     """Core verification logic shared by both /hash and /upload endpoints."""
-    # 1. Check blockchain
-    bc_result = blockchain_verify(sha256_hash)
     
-    # 2. Check Database
-    doc = Document.query.filter_by(sha256_hash=sha256_hash).first()
-    
-    if not doc and not bc_result["exists"]:
+    # 1. Check database defensively
+    try:
+        doc = Document.query.filter_by(sha256_hash=sha256_hash).first()
+    except Exception as e:
+        logger.error("DB Query Error: %s", e)
+        # Database unavailable, we'll just act as if not found locally
+        doc = None
+
+    # 2. Check blockchain defensively
+    try:
+        bc_result = blockchain_verify(sha256_hash)
+    except Exception as e:
+        logger.error("Blockchain Query Error: %s", e)
+        bc_result = {}
+
+    bc_exists = bc_result.get("exists", False) if isinstance(bc_result, dict) else False
+    bc_timestamp = bc_result.get("timestamp", 0) if isinstance(bc_result, dict) else 0
+    bc_revoked = bc_result.get("revoked", False) if isinstance(bc_result, dict) else False
+    bc_cid = bc_result.get("cid", "") if isinstance(bc_result, dict) else ""
+
+    if not doc and not bc_exists:
         return {
             "verified": False,
             "status": "not_found",
-            "message": "Document hash not found on blockchain or local database."
+            "message": "Document not found on blockchain or local database.",
+            "document": None,
+            "blockchain_timestamp": None,
+            "ipfs_url": None
         }
-        
+
     status = "verified"
     if doc and doc.status == "revoked":
         status = "revoked"
-    elif bc_result.get("revoked", False): # if we add revoked flag to blockchain response in future
+    elif bc_revoked:
         status = "revoked"
-        
+
     ipfs_url = ""
     if doc and doc.ipfs_cid:
         ipfs_url = get_file_url(doc.ipfs_cid)
-    elif bc_result.get("cid"):
-        ipfs_url = get_file_url(bc_result["cid"])
+    elif bc_cid:
+        ipfs_url = get_file_url(bc_cid)
 
     # 3. Log to AuditLog if it's found in DB
     if doc:
-        audit = AuditLog(
-            document_id=doc.id,
-            action="verify",
-            performed_by="public_verification",
-            details={
-                "method": "hash",
-                "blockchain_timestamp": bc_result["timestamp"],
-            }
-        )
-        db.session.add(audit)
-        db.session.commit()
+        try:
+            audit = AuditLog(
+                document_id=doc.id,
+                action="verify",
+                performed_by="public_verification",
+                details={
+                    "method": "hash",
+                    "blockchain_timestamp": bc_timestamp,
+                }
+            )
+            db.session.add(audit)
+            db.session.commit()
+        except Exception as e:
+            logger.error("AuditLog Insert Error: %s", e)
+            db.session.rollback()
 
     return {
         "verified": (status == "verified"),
         "status": status,
         "document": doc.to_dict() if doc else None,
-        "blockchain_timestamp": bc_result["timestamp"],
+        "blockchain_timestamp": bc_timestamp,
         "ipfs_url": ipfs_url,
     }
 
@@ -144,12 +168,16 @@ def api_verify_hash():
     if not sha256_hash or len(sha256_hash) != 64:
         return _api_err("Please provide a valid 64-character SHA-256 hash.", 400)
 
-    result = _verify_hash_logic(sha256_hash)
-    
-    if result["status"] == "not_found":
-        return _api_ok(data=result, message=result.pop("message"))
+    try:
+        result = _verify_hash_logic(sha256_hash)
         
-    return _api_ok(data=result, message=f"Document is {result['status']}.")
+        if result["status"] == "not_found":
+            return _api_err(result.pop("message"), 404)
+            
+        return _api_ok(data=result, message=f"Document is {result['status']}.")
+    except Exception as e:
+        logger.error("Verify Hash Endpoint Error: %s", e)
+        return _api_err("Internal Server Error during verification", 500)
 
 
 @verify_api_bp.route("/upload", methods=["POST"])
@@ -167,14 +195,26 @@ def api_verify_upload():
     try:
         file.save(path)
         sha256_hash = hash_file(path)
+    except Exception as e:
+        logger.error("File Save Error: %s", e)
+        if os.path.exists(path):
+            os.unlink(path)
+        return _api_err("Failed to process file.", 500)
+
+    # Now verify the hash
+    try:
+        result = _verify_hash_logic(sha256_hash)
+    except Exception as e:
+        logger.error("Verify Logic Error: %s", e)
+        if os.path.exists(path):
+            os.unlink(path)
+        return _api_err("Internal Server Error during verification", 500)
     finally:
         if os.path.exists(path):
             os.unlink(path)
-
-    result = _verify_hash_logic(sha256_hash)
-    
+            
     if result["status"] == "not_found":
-        return _api_ok(data=result, message=result.pop("message"))
+        return _api_err(result.pop("message"), 404)
         
     return _api_ok(data=result, message=f"Document is {result['status']}.")
 
@@ -182,10 +222,14 @@ def api_verify_upload():
 @verify_api_bp.route("/qr/<int:doc_id>", methods=["GET"])
 def api_get_qr(doc_id: int):
     """Return the generated QR code for a given document."""
-    qr_dir = os.path.join(current_app.root_path, "static", "qrcodes")
-    filename = f"{doc_id}.png"
-    
-    if not os.path.exists(os.path.join(qr_dir, filename)):
-        return _api_err("QR code not found.", 404)
+    try:
+        qr_dir = os.path.join(current_app.root_path, "static", "qrcodes")
+        filename = f"{doc_id}.png"
         
-    return send_from_directory(qr_dir, filename)
+        if not os.path.exists(os.path.join(qr_dir, filename)):
+            return _api_err("QR code not found.", 404)
+            
+        return send_from_directory(qr_dir, filename)
+    except Exception as e:
+        logger.error("QR Code Endpoint Error: %s", e)
+        return _api_err("Failed to retrieve QR code", 500)

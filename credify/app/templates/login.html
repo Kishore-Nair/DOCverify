@@ -6,10 +6,12 @@
 <div class="auth-container">
     <div class="auth-card glass-card">
         <div class="auth-header">
-            <span class="auth-icon">🔐</span>
+            <div class="auth-icon">
+                {% if mode == 'register' %}🚀{% else %}🔐{% endif %}
+            </div>
             <h1 id="auth-title">{{ 'Create Account' if mode == 'register' else 'Welcome Back' }}</h1>
             <p class="auth-subtitle">
-                {{ 'Join Credify to verify and secure your documents on the blockchain.' if mode == 'register' else 'Log in to your Credify account.' }}
+                {{ 'Join Credify to verify and secure your documents on the blockchain.' if mode == 'register' else 'Sign in to access your secure document vault.' }}
             </p>
         </div>
 
@@ -36,13 +38,13 @@
             </div>
 
             <button type="submit" class="btn btn--primary btn--full" id="auth-submit">
-                {{ 'Create Account' if mode == 'register' else 'Log In' }}
+                {{ 'Create Account' if mode == 'register' else 'Sign In' }}
             </button>
         </form>
 
         <div class="auth-footer">
             {% if mode == 'register' %}
-                <p>Already have an account? <a href="{{ url_for('auth.login') }}">Log in</a></p>
+                <p>Already have an account? <a href="{{ url_for('auth.login') }}">Sign in</a></p>
             {% else %}
                 <p>Don't have an account? <a href="{{ url_for('auth.register') }}">Register</a></p>
             {% endif %}
